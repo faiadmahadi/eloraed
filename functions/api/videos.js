@@ -1,7 +1,7 @@
 // GET /api/videos: the EloraEd page's Facebook videos and reels, newest first.
 // Needs the Cloudflare Pages secret FB_PAGE_TOKEN (a Page access token for the page).
 // Answers are cached at the edge for 15 minutes, so a new upload shows up within that time.
-const GRAPH = "https://graph.facebook.com/v21.0/me";
+const GRAPH = "https://graph.facebook.com/v26.0/me";
 const FIELDS = encodeURIComponent("id,description,permalink_url,created_time,length,picture,thumbnails{uri,is_preferred,height}");
 const TTL = 900;
 

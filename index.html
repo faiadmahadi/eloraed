@@ -254,7 +254,10 @@ const VIDEOS = [
   { n: 6, q: "বরফ কঠিন, তবু পানিতে ভাসে কেন?", topic: "ঘনত্ব", scene: "ঢাকার শরবতের গাড়ির গ্লাস থেকে ঘনত্বের কিউব, তারপর জমে যাওয়া শীতের হ্রদের নিচে।" },
   { n: 7, q: "ঘামলে ফ্যানের বাতাস বেশি ঠান্ডা লাগে কেন?", topic: "সুপ্ততাপ", scene: "ঢাকার শোবার ঘরের সিলিং ফ্যান থেকে হাতের চামড়ার ভেতরে, তারপর মাটির কলসি।" },
   { n: 8, q: "রেললাইনে ফাঁক রাখে কেন?", topic: "দৈর্ঘ্য প্রসারণ", scene: "ধানক্ষেতের মাঝের রেললাইন, গরমে বেঁকে যাওয়া রেল, রোলারের ওপর বসানো লোহার সেতু।" },
+  { n: 15, curious: true, q: "উড়ন্ত গাড়ি! টেসলা রোডস্টার উড়লো কীভাবে?", topic: "কৌতূহল", scene: "রাতের টেক্সাস টেস্ট সাইট থেকে ১৯৭৮-এর ফ্যান কার, তারপর মহাকাশে ঘুরতে থাকা ২০১৮-এর রোডস্টার।" },
 ];
+/* Curiosity series number → script number */
+const CURIOSITY = { 1: 15 };
 const SOON = [
   { n: 9, q: "গরম পানিতে মোটা গ্লাসটাই ফাটে কেন?", tag: "অসম প্রসারণ" },
   { n: 10, q: "পুকুর জমে বরফ, তবু নিচে মাছ বাঁচে কীভাবে?", tag: "পানির ব্যতিক্রমী প্রসারণ" },
@@ -279,8 +282,10 @@ const QUIZ = [
    (GitHub Pages, preview) the static list above is shown. */
 const fbUrl = (p) => (/^https?:/.test(p) ? p : "https://www.facebook.com" + p);
 const seriesNo = (text) => {
-  const m = (text || "").match(/Elora বিজ্ঞান\s*#\s*([০-৯0-9]+)/);
-  return m ? Number(m[1].replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d))) : null;
+  const m = (text || "").match(/Elora (বিজ্ঞান|কৌতূহল)\s*#\s*([০-৯0-9]+)/);
+  if (!m) return null;
+  const k = Number(m[2].replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)));
+  return m[1] === "কৌতূহল" ? CURIOSITY[k] || null : k;
 };
 function useVideos() {
   const [live, setLive] = useState(null);
@@ -416,7 +421,7 @@ function VideoCard({ v, onOpen }) {
   return html`<button className="vcard" ref=${ref} onMouseMove=${move} onMouseLeave=${leave} onClick=${() => onOpen(v)} aria-label=${v.q}>
     <div className="phone">
       <img src=${imgOf(v)} alt="" loading="lazy" />
-      ${v.n && html`<span className="badge">#${bn(v.n)}</span>`}
+      ${v.n && html`<span className="badge">${v.curious ? "✦" : "#" + bn(v.n)}</span>`}
       <span className="play"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z"/></svg></span>
       <div className="meta"><span className="topic">${v.topic}</span><h3>${v.q}</h3></div>
     </div>
