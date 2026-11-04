@@ -500,7 +500,8 @@ function Quiz() {
 }
 
 function Soon({ posted }) {
-  const left = SOON.filter((s) => !posted.has(s.n));
+  const made = VIDEOS.filter((v) => !v.curious).map((v) => ({ n: v.n, q: v.q, tag: v.topic }));
+  const left = [...made, ...SOON].filter((s) => !posted.has(s.n));
   if (!left.length) return null;
   return html`<section className="block" id="soon"><div className="wrap">
     <${Reveal} className="head"><div><p className="eyebrow">আসছে</p><h2>পরের <span className="grad">প্রশ্নগুলো</span></h2></div><//>
