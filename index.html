@@ -274,6 +274,31 @@ const QUIZ = [
     opts: ["ট্রেনের শব্দ কমাতে", "লোহা বাঁচাতে", "গরমে পাত লম্বা হলেও যেন বেঁকে না যায়"], a: 2,
     why: "তাপ পেলে কঠিন পদার্থের দৈর্ঘ্য বাড়ে (দৈর্ঘ্য প্রসারণ)। ফাঁক না থাকলে গরমের দিনে রেলপাত ঠেলাঠেলি করে বেঁকে যেত।" },
 ];
+/* Live list: /api/videos (Cloudflare function) returns the page's posted videos.
+   Each is matched to VIDEOS by the "Elora বিজ্ঞান #n" tag in its caption. Without the API
+   (GitHub Pages, preview) the static list above is shown. */
+const fbUrl = (p) => (/^https?:/.test(p) ? p : "https://www.facebook.com" + p);
+const seriesNo = (text) => {
+  const m = (text || "").match(/Elora বিজ্ঞান\s*#\s*([০-৯0-9]+)/);
+  return m ? Number(m[1].replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d))) : null;
+};
+function useVideos() {
+  const [live, setLive] = useState(null);
+  useEffect(() => {
+    fetch("api/videos").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.videos && d.videos.length) setLive(d.videos); }).catch(() => {});
+  }, []);
+  if (!live) return VIDEOS;
+  return live.map((f) => {
+    const n = seriesNo(f.description);
+    const known = VIDEOS.find((v) => v.n === n);
+    const lines = f.description.split("\n").map((s) => s.trim()).filter(Boolean);
+    return known
+      ? { ...known, key: f.id, fb: fbUrl(f.permalink_url) }
+      : { n, key: f.id, q: (lines[0] || "নতুন ভিডিও").replace(/\s*\p{Extended_Pictographic}+\s*$/u, ""), topic: "নতুন", scene: lines[1] || "", img: f.thumb, fb: fbUrl(f.permalink_url) };
+  });
+}
+const imgOf = (v) => v.img || `img/${String(v.n).padStart(2, "0")}.jpg`;
+
 const TOPICS = ["প্রতিসরণ", "প্লবতা", "চাপ", "তরলের চাপ", "স্ফুটনাঙ্ক", "ঘনত্ব", "সুপ্ততাপ", "দৈর্ঘ্য প্রসারণ", "প্রতিধ্বনি", "স্থির তড়িৎ"];
 
 const FbIcon = () => html`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 8.5V6.8c0-.8.5-1 .9-1H17V2.2L14 2.2c-3.3 0-4 2.4-4 4v2.3H8v3.7h2V22h4v-9.8h2.7l.4-3.7z"/></svg>`;
@@ -336,7 +361,7 @@ function Nav() {
   </div></div></nav>`;
 }
 
-function Hero() {
+function Hero({ count }) {
   const ref = useRef(null);
   useEffect(() => {
     if (reduced) return;
@@ -357,7 +382,7 @@ function Hero() {
           <${Magnet} className="pill pill-ghost" onClick=${() => document.getElementById("videos").scrollIntoView()}>ভিডিওগুলো দেখো<//>
         </div>
         <div className="stats">
-          <div className="stat"><b><${Counter} to=${8} />টি</b><span>ভিডিও প্রকাশিত</span></div>
+          <div className="stat"><b><${Counter} to=${count} />টি</b><span>ভিডিও প্রকাশিত</span></div>
           <div className="stat"><b><${Counter} to=${60} />সে.</b><span>একটা ধারণা, এক মিনিটে</span></div>
           <div className="stat"><b><${Counter} to=${9} />টি</b><span>বোর্ডের সিলেবাস</span></div>
         </div>
@@ -388,26 +413,25 @@ function VideoCard({ v, onOpen }) {
     ref.current.style.setProperty("--rx", `${-((e.clientY - r.top) / r.height - .5) * 14}deg`);
   };
   const leave = () => { ref.current.style.setProperty("--rx", "0deg"); ref.current.style.setProperty("--ry", "0deg"); };
-  const id = String(v.n).padStart(2, "0");
-  return html`<button className="vcard" ref=${ref} onMouseMove=${move} onMouseLeave=${leave} onClick=${() => onOpen(v)} aria-label=${`ভিডিও ${bn(v.n)}: ${v.q}`}>
+  return html`<button className="vcard" ref=${ref} onMouseMove=${move} onMouseLeave=${leave} onClick=${() => onOpen(v)} aria-label=${v.q}>
     <div className="phone">
-      <img src=${`img/${id}.jpg`} alt="" loading="lazy" />
-      <span className="badge">#${bn(v.n)}</span>
+      <img src=${imgOf(v)} alt="" loading="lazy" />
+      ${v.n && html`<span className="badge">#${bn(v.n)}</span>`}
       <span className="play"><svg viewBox="0 0 10 12"><path d="M0 0l10 6-10 6z"/></svg></span>
       <div className="meta"><span className="topic">${v.topic}</span><h3>${v.q}</h3></div>
     </div>
   </button>`;
 }
 
-function Videos({ onOpen }) {
+function Videos({ videos, onOpen }) {
   const rail = useRef(null);
   const by = (d) => rail.current.scrollBy({ left: d * rail.current.clientWidth * .8, behavior: reduced ? "auto" : "smooth" });
   return html`<section className="block" id="videos"><div className="wrap">
     <${Reveal} className="head">
-      <div><p className="eyebrow">Elora বিজ্ঞান সিরিজ</p><h2>এ পর্যন্ত <span className="grad">৮টা প্রশ্নের</span> উত্তর</h2></div>
+      <div><p className="eyebrow">Elora বিজ্ঞান সিরিজ</p><h2>এ পর্যন্ত <span className="grad">${bn(videos.length)}টা প্রশ্নের</span> উত্তর</h2></div>
       <div className="arrows"><button onClick=${() => by(-1)} aria-label="আগের ভিডিও"><${Arrow} left /></button><button onClick=${() => by(1)} aria-label="পরের ভিডিও"><${Arrow} /></button></div>
     <//>
-    <${Reveal}><div className="rail" ref=${rail}>${VIDEOS.map((v) => html`<${VideoCard} key=${v.n} v=${v} onOpen=${onOpen} />`)}</div><//>
+    <${Reveal}><div className="rail" ref=${rail}>${videos.map((v) => html`<${VideoCard} key=${v.key || v.n} v=${v} onOpen=${onOpen} />`)}</div><//>
   </div></section>`;
 }
 
@@ -470,10 +494,12 @@ function Quiz() {
   </div></section>`;
 }
 
-function Soon() {
+function Soon({ posted }) {
+  const left = SOON.filter((s) => !posted.has(s.n));
+  if (!left.length) return null;
   return html`<section className="block" id="soon"><div className="wrap">
     <${Reveal} className="head"><div><p className="eyebrow">আসছে</p><h2>পরের <span className="grad">প্রশ্নগুলো</span></h2></div><//>
-    <div className="soon">${SOON.map((s, i) => html`<${Reveal} key=${s.n} className="scard" style=${{ transitionDelay: `${(i % 3) * 70}ms` }}>
+    <div className="soon">${left.map((s, i) => html`<${Reveal} key=${s.n} className="scard" style=${{ transitionDelay: `${(i % 3) * 70}ms` }}>
       <span className="n">${bn(String(s.n).padStart(2, "0"))}</span><h3>${s.q}</h3><span className="tag">${s.tag}</span>
     <//>`)}</div>
   </div></section>`;
@@ -514,22 +540,26 @@ function Modal({ v, onClose }) {
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, [onClose]);
-  const id = String(v.n).padStart(2, "0");
+  const player = v.fb && `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(v.fb)}&show_text=false&width=280&height=498`;
   return html`<div className="modal" role="dialog" aria-modal="true" aria-label=${v.q} onClick=${(e) => e.target === e.currentTarget && onClose()}>
     <button className="close" onClick=${onClose} aria-label="বন্ধ করো">✕</button>
     <div className="sheet">
-      <div className="phone"><img src=${`img/${id}.jpg`} alt="" /></div>
+      <div className="phone">${player
+        ? html`<iframe src=${player} title=${v.q} style=${{ width: "100%", height: "100%", border: 0 }} allow="autoplay; encrypted-media; picture-in-picture; web-share" allowFullScreen></iframe>`
+        : html`<img src=${imgOf(v)} alt="" />`}</div>
       <div>
         <span className="topic">${v.topic}</span>
         <h3>${v.q}</h3>
         <p className="scene">${v.scene}</p>
-        <${Magnet} href=${FB} className="pill pill-orange"><${FbIcon} />Facebook-এ ভিডিওটা দেখো<//>
+        <${Magnet} href=${v.fb || FB} className="pill pill-orange"><${FbIcon} />Facebook-এ ভিডিওটা দেখো<//>
       </div>
     </div>
   </div>`;
 }
 
 function App() {
+  const videos = useVideos();
+  const posted = new Set(videos.map((v) => v.n));
   const [open, setOpen] = useState(null);
   const close = useCallback(() => setOpen(null), []);
   const bar = useRef(null);
@@ -539,8 +569,8 @@ function App() {
     return () => removeEventListener("scroll", onScroll);
   }, []);
   return html`<div className="progress" ref=${bar}></div>
-    <${Nav} /><${Hero} /><${Band} />
-    <main><${Videos} onOpen=${setOpen} /><${How} /><${Quiz} /><${Soon} /></main>
+    <${Nav} /><${Hero} count=${videos.length} /><${Band} />
+    <main><${Videos} videos=${videos} onOpen=${setOpen} /><${How} /><${Quiz} /><${Soon} posted=${posted} /></main>
     <${Final} />
     ${open && html`<${Modal} v=${open} onClose=${close} />`}`;
 }
