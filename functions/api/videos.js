@@ -16,10 +16,21 @@ const json = (body, status = 200, maxAge = 0) => new Response(JSON.stringify(bod
 export async function onRequestGet({ env, request, waitUntil }) {
   const cache = caches.default;
   const key = new Request(new URL("/api/videos", request.url).toString());
+  const lastKey = new Request(new URL("/api/videos/last-good", request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
 
-  if (!env.FB_PAGE_TOKEN) return json({ videos: [], error: "FB_PAGE_TOKEN is not set" }, 503);
+  // When Facebook fails, answer with the last list it gave us (kept 30 days) instead of nothing.
+  const fail = async (error, status) => {
+    const last = await cache.match(lastKey);
+    if (last) {
+      const body = await last.json();
+      return json({ ...body, stale: true, error }, 200, 60);
+    }
+    return json({ videos: [], error }, status);
+  };
+
+  if (!env.FB_PAGE_TOKEN) return fail("FB_PAGE_TOKEN is not set", 503);
 
   const call = async (path, token) => {
     const r = await fetch(`${API}/${path}${path.includes("?") ? "&" : "?"}access_token=${token}`);
@@ -52,10 +63,11 @@ export async function onRequestGet({ env, request, waitUntil }) {
           thumb: (best && best.uri) || v.picture || "",
         };
       });
-    const res = json({ videos: list, updated: new Date().toISOString() }, 200, TTL);
-    waitUntil(cache.put(key, res.clone()));
+    const body = { videos: list, updated: new Date().toISOString() };
+    const res = json(body, 200, TTL);
+    waitUntil(Promise.all([cache.put(key, res.clone()), cache.put(lastKey, json(body, 200, 30 * 86400))]));
     return res;
   } catch (e) {
-    return json({ videos: [], error: String(e.message || e) }, 502);
+    return fail(String(e.message || e), 502);
   }
 }

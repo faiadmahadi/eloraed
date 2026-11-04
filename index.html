@@ -295,10 +295,18 @@ const seriesNo = (text) => {
   const k = Number(m[2].replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)));
   return m[1] === "কৌতূহল" ? CURIOSITY[k] || null : k;
 };
+const LAST = "eloraed-videos";
+const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST)) || null; } catch (e) { return null; } };
 function useVideos() {
-  const [live, setLive] = useState(null);
+  // null = no API here (GitHub Pages, preview): show the built-in list.
+  // On Cloudflare the API decides; if Facebook fails, keep the last list this browser saw.
+  const [live, setLive] = useState(readLast);
   useEffect(() => {
-    fetch("api/videos").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.videos && d.videos.length) setLive(d.videos); }).catch(() => {});
+    fetch("api/videos").then((r) => (r.status === 404 ? null : r.json())).then((d) => {
+      if (!d || !d.videos) return;
+      if (d.videos.length) { setLive(d.videos); try { localStorage.setItem(LAST, JSON.stringify(d.videos)); } catch (e) {} }
+      else setLive((prev) => prev || []);
+    }).catch(() => {});
   }, []);
   if (!live) return VIDEOS;
   return live.map((f) => {
@@ -438,13 +446,15 @@ function VideoCard({ v, onOpen }) {
 
 function Videos({ videos, onOpen }) {
   const rail = useRef(null);
-  const by = (d) => rail.current.scrollBy({ left: d * rail.current.clientWidth * .8, behavior: reduced ? "auto" : "smooth" });
+  const by = (d) => rail.current && rail.current.scrollBy({ left: d * rail.current.clientWidth * .8, behavior: reduced ? "auto" : "smooth" });
   return html`<section className="block" id="videos"><div className="wrap">
     <${Reveal} className="head">
       <div><p className="eyebrow">Elora বিজ্ঞান সিরিজ</p><h2>এ পর্যন্ত <span className="grad">${bn(videos.length)}টা প্রশ্নের</span> উত্তর</h2></div>
       <div className="arrows"><button onClick=${() => by(-1)} aria-label="আগের ভিডিও"><${Arrow} left /></button><button onClick=${() => by(1)} aria-label="পরের ভিডিও"><${Arrow} /></button></div>
     <//>
-    <${Reveal}><div className="rail" ref=${rail}>${videos.map((v) => html`<${VideoCard} key=${v.key || v.n} v=${v} onOpen=${onOpen} />`)}</div><//>
+    <${Reveal}>${videos.length
+      ? html`<div className="rail" ref=${rail}>${videos.map((v) => html`<${VideoCard} key=${v.key || v.n} v=${v} onOpen=${onOpen} />`)}</div>`
+      : html`<p className="lede">ভিডিওগুলো এই মুহূর্তে লোড হচ্ছে না। সব ভিডিও দেখো <a href=${FB} target="_blank" rel="noopener" style=${{ color: "var(--orange-2)", fontWeight: 700 }}>আমাদের Facebook পেজে</a>।</p>`}<//>
   </div></section>`;
 }
 
