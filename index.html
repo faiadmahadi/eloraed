@@ -28,7 +28,7 @@
   --glass: rgba(255, 255, 255, .72);
   --grid: rgba(42, 10, 46, .05);
   --display: "Shamim Cholontika", "Baloo Da 2", "Hind Siliguri", system-ui, sans-serif;
-  --body: "Shamim Cholontika", "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --body: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #16081b; --bg-2: #1f0c26; --card: #24102c; --line: #3a1d45; --ink: #fff4e4; --muted: #c4a9bf;
@@ -40,6 +40,12 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.65; overflow-x: hidden; }
+/* Shamim Cholontika has one weight: never fake-bold it, and give its letters their natural spacing */
+* { font-synthesis: none; }
+h1, h2, h3, .logo, .stat b, .scard .n, .track span { letter-spacing: normal !important; }
+/* Shamim Cholontika is a heavy display face: big text and buttons only; reading text stays in Hind Siliguri */
+.pill, .chip, .step .dot, .topic, .badge { font-family: var(--display); }
+h1 { line-height: 1.12; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--bg); }
 .wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 a { color: inherit; text-decoration: none; }
