@@ -7,6 +7,8 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap">
 <style>
+/* Bangla text uses Shamim Cholontika; Latin letters fall back to Baloo Da 2 / Hind Siliguri */
+@font-face { font-family: "Shamim Cholontika"; src: url("fonts/ShamimCholontika.ttf") format("truetype"); font-display: swap; unicode-range: U+0980-09FF, U+200C-200D, U+25CC; }
 /* Layout: a plum night sky lit by the mascot's orange glow; the purple orbit ring and the peeling sticker corner from the logo are the recurring motifs */
 :root {
   --bg: #fff6ec;
@@ -25,8 +27,8 @@
   --bad: #e23a4e;
   --glass: rgba(255, 255, 255, .72);
   --grid: rgba(42, 10, 46, .05);
-  --display: "Baloo Da 2", "Hind Siliguri", system-ui, sans-serif;
-  --body: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --display: "Shamim Cholontika", "Baloo Da 2", "Hind Siliguri", system-ui, sans-serif;
+  --body: "Shamim Cholontika", "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #16081b; --bg-2: #1f0c26; --card: #24102c; --line: #3a1d45; --ink: #fff4e4; --muted: #c4a9bf;
