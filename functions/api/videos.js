@@ -1,7 +1,10 @@
 // GET /api/videos: the EloraEd page's Facebook videos and reels, newest first.
-// Needs the Cloudflare Pages secret FB_PAGE_TOKEN (a Page access token for the page).
-// Answers are cached at the edge for 15 minutes, so a new upload shows up within that time.
-const GRAPH = "https://graph.facebook.com/v26.0/me";
+// Needs the Cloudflare Pages secret FB_PAGE_TOKEN: either a Page access token, or a
+// never-expiring system-user token from the EloraEd business portfolio (the page token
+// is then looked up from it). Answers are cached at the edge for 15 minutes, so a new
+// upload shows up within that time.
+const API = "https://graph.facebook.com/v26.0";
+const PAGE_ID = "1408069942390202";
 const FIELDS = encodeURIComponent("id,description,permalink_url,created_time,length,picture,thumbnails{uri,is_preferred,height}");
 const TTL = 900;
 
@@ -18,14 +21,20 @@ export async function onRequestGet({ env, request, waitUntil }) {
 
   if (!env.FB_PAGE_TOKEN) return json({ videos: [], error: "FB_PAGE_TOKEN is not set" }, 503);
 
-  const get = async (edge) => {
-    const r = await fetch(`${GRAPH}/${edge}?fields=${FIELDS}&limit=50&access_token=${env.FB_PAGE_TOKEN}`);
+  const call = async (path, token) => {
+    const r = await fetch(`${API}/${path}${path.includes("?") ? "&" : "?"}access_token=${token}`);
     const d = await r.json();
-    if (d.error) throw new Error(`${edge}: ${d.error.message}`);
-    return d.data || [];
+    if (d.error) throw new Error(`${path.split("?")[0]}: ${d.error.message}`);
+    return d;
   };
 
   try {
+    // A user/system-user token lists the page with its own page token; a page token lists nothing.
+    const accounts = await call("me/accounts?fields=id,access_token", env.FB_PAGE_TOKEN).catch(() => ({ data: [] }));
+    const page = (accounts.data || []).find((p) => p.id === PAGE_ID);
+    const token = page ? page.access_token : env.FB_PAGE_TOKEN;
+    const get = async (edge) => (await call(`${PAGE_ID}/${edge}?fields=${FIELDS}&limit=50`, token)).data || [];
+
     const [videos, reels] = await Promise.all([get("videos"), get("video_reels").catch(() => [])]);
     const seen = new Map();
     for (const v of [...videos, ...reels]) if (!seen.has(v.id)) seen.set(v.id, v);
