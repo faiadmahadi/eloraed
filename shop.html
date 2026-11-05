@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="bn">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="img/logo.png">
+<title>EloraEd শপ</title>
+<meta name="description" content="EloraEd শপ: SSC পদার্থবিজ্ঞানের বই, ই-বুক, নোট, লাইভ ক্লাস আর কোর্স।">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/shop.css">
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/scene3d.js"></script>
+<script>
+const PROPS = [ // one per section
+  { kind: "books", at: "#top", dy: .15, x: .86, z: -60, size: 140 },
+  { kind: "notes", at: "#list", dy: .5, x: -.92, z: -40, size: 110, mobile: false },
+  { kind: "cap", at: "#ask", dy: .1, x: .9, z: -80, size: 110 },
+];
+/* Types the owner is likely to use; any other type typed in the dashboard gets its own tab too */
+const TYPE_ORDER = ["বই", "ই-বুক", "নোট", "ক্লাস", "কোর্স", "মডেল টেস্ট"];
+const COVER = { "বই": ["#f2541e", "#8e2bd6"], "ই-বুক": ["#8e2bd6", "#4e1478"], "নোট": ["#ffb347", "#f2541e"], "ক্লাস": ["#c42a2a", "#2a0a2e"], "কোর্স": ["#ff7a1a", "#8e2bd6"] };
+const off = (p) => (p.oldPrice > p.price ? Math.round((1 - p.price / p.oldPrice) * 100) : 0);
+
+function Cover({ p }) {
+  if (p.image) return html`<img src=${p.image} alt="" loading="lazy" />`;
+  const [a, b] = COVER[p.type] || ["#ff7a1a", "#8e2bd6"];
+  return html`<div className="gen" style=${{ background: `radial-gradient(circle at 80% 10%, rgba(255,255,255,.3), transparent 45%), linear-gradient(150deg, ${a}, ${b})` }}>
+    <span>${p.type}</span><b>${p.title}</b><img src="img/logo.png" alt="" />
+  </div>`;
+}
+
+function Price({ p, big }) {
+  return html`<div className=${`price ${big ? "big" : ""}`}>
+    <b>${p.price ? taka(p.price) : "ফ্রি"}</b>
+    ${off(p) > 0 && html`<s>${taka(p.oldPrice)}</s><em>${bn(off(p))}% ছাড়</em>`}
+  </div>`;
+}
+
+function Card({ p, onOpen, i }) {
+  const ref = useRef(null);
+  const move = (e) => {
+    if (reduced) return;
+    const r = ref.current.getBoundingClientRect();
+    ref.current.style.setProperty("--ry", `${((e.clientX - r.left) / r.width - .5) * 12}deg`);
+    ref.current.style.setProperty("--rx", `${-((e.clientY - r.top) / r.height - .5) * 12}deg`);
+  };
+  const leave = () => { ref.current.style.setProperty("--rx", "0deg"); ref.current.style.setProperty("--ry", "0deg"); };
+  return html`<${Reveal} className="pwrap" style=${{ transitionDelay: `${(i % 3) * 70}ms` }}>
+    <button className="pcard" ref=${ref} onMouseMove=${move} onMouseLeave=${leave} onClick=${() => onOpen(p)}>
+      <div className="pimg"><${Cover} p=${p} />${p.badge && html`<span className="pbadge">${p.badge}</span>`}</div>
+      <div className="pbody">
+        <span className="topic">${p.type}</span>
+        <h3>${p.title}</h3>
+        ${p.subtitle && html`<p className="sub">${p.subtitle}</p>`}
+        ${p.info && html`<p className="info">${p.info}</p>`}
+        <div className="prow"><${Price} p=${p} /><span className="go">বিস্তারিত →</span></div>
+      </div>
+    </button>
+  <//>`;
+}
+
+function OrderForm({ p, settings, onDone }) {
+  const free = !p.price;
+  const methods = [settings.bkash && "bKash", settings.nagad && "Nagad", p.needsAddress && "ক্যাশ অন ডেলিভারি"].filter(Boolean);
+  const [f, setF] = useState({ name: "", phone: "", address: "", email: "", method: methods[0] || "", trx: "", note: "", website: "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const prepaid = !free && (f.method === "bKash" || f.method === "Nagad");
+  const number = f.method === "bKash" ? settings.bkash : f.method === "Nagad" ? settings.nagad : "";
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, productId: p.id }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "অর্ডার পাঠানো যায়নি। আবার চেষ্টা করো।");
+      onDone(d.id);
+    } catch (e2) { setErr(e2.message); setBusy(false); }
+  };
+  return html`<form className="oform" onSubmit=${submit}>
+    <h4>অর্ডার করো</h4>
+    ${prepaid && number && html`<div className="pay">
+      <b>${f.method}-এ ${taka(p.price)} সেন্ড মানি করো:</b>
+      <span className="num">${number}</span>
+      ${settings.payNote && html`<small>${settings.payNote}</small>`}
+    </div>`}
+    <div className="grid2">
+      <label>তোমার নাম<input required value=${f.name} onInput=${set("name")} autoComplete="name" /></label>
+      <label>ফোন নম্বর<input required value=${f.phone} onInput=${set("phone")} inputMode="tel" placeholder="01XXXXXXXXX" autoComplete="tel" /></label>
+    </div>
+    ${p.needsAddress && html`<label>ডেলিভারির ঠিকানা<textarea required rows="2" value=${f.address} onInput=${set("address")} autoComplete="street-address"></textarea></label>`}
+    ${!p.needsAddress && html`<label>ইমেইল (ঐচ্ছিক)<input type="email" value=${f.email} onInput=${set("email")} autoComplete="email" /></label>`}
+    ${!free && methods.length > 0 && html`<div className="methods" role="radiogroup" aria-label="পেমেন্ট">
+      ${methods.map((m) => html`<button type="button" key=${m} role="radio" aria-checked=${f.method === m} className=${f.method === m ? "on" : ""} onClick=${() => setF({ ...f, method: m })}>${m}</button>`)}
+    </div>`}
+    ${prepaid && html`<label>ট্রানজেকশন আইডি (TrxID)<input required value=${f.trx} onInput=${set("trx")} placeholder="যেমন 9AB1C2D3EF" /></label>`}
+    <label>কিছু বলার থাকলে (ঐচ্ছিক)<input value=${f.note} onInput=${set("note")} /></label>
+    <input className="hp" tabIndex="-1" autoComplete="off" value=${f.website} onInput=${set("website")} aria-hidden="true" />
+    ${err && html`<p className="err">${err}</p>`}
+    <${Magnet} type="submit" className="pill pill-orange" disabled=${busy}>${busy ? "পাঠানো হচ্ছে…" : free ? "ফ্রি-তে নাও" : "অর্ডার নিশ্চিত করো"}<//>
+  </form>`;
+}
+
+function Product({ p, settings, onClose }) {
+  const [done, setDone] = useState(null);
+  useEffect(() => {
+    const k = (e) => e.key === "Escape" && onClose();
+    addEventListener("keydown", k);
+    history.replaceState(null, "", "#" + p.id);
+    return () => { removeEventListener("keydown", k); history.replaceState(null, "", location.pathname); };
+  }, [p.id]);
+  return html`<div className="modal" role="dialog" aria-modal="true" aria-label=${p.title} onClick=${(e) => e.target === e.currentTarget && onClose()}>
+    <button className="close" onClick=${onClose} aria-label="বন্ধ করো">✕</button>
+    <div className="psheet">
+      <div className="pside"><div className="pimg"><${Cover} p=${p} /></div></div>
+      <div className="pmain">
+        <span className="topic">${p.type}</span>${p.badge && html` <span className="topic alt">${p.badge}</span>`}
+        <h3>${p.title}</h3>
+        ${p.subtitle && html`<p className="sub">${p.subtitle}</p>`}
+        <${Price} p=${p} big />
+        ${p.info && html`<p className="info">${p.info}</p>`}
+        ${p.description && html`<div className="desc">${p.description.split("\n").map((l, i) => html`<p key=${i}>${l}</p>`)}</div>`}
+        ${p.features.length > 0 && html`<ul className="feat">${p.features.map((x, i) => html`<li key=${i}>${x}</li>`)}</ul>`}
+        ${p.link && html`<p><a className="more" href=${p.link} target="_blank" rel="noopener">আরও দেখো ↗</a></p>`}
+        ${done
+          ? html`<div className="okbox"><b>অর্ডার পেয়েছি! 🎉</b><p>${p.price ? "পেমেন্ট মিলিয়ে" : "শিগগিরই"} তোমার ফোন নম্বরে যোগাযোগ করবো। দরকারে Facebook-এ মেসেজ দাও।</p><small>অর্ডার নং: ${done}</small></div>`
+          : html`<${OrderForm} p=${p} settings=${settings} onDone=${setDone} />`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function App() {
+  const [items, setItems] = useState(null);
+  const [settings, setSettings] = useState({});
+  const [tab, setTab] = useState("সব");
+  const [open, setOpen] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    fetch("api/products").then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => setItems(d.products || [])).catch(() => { setItems([]); setFailed(true); });
+    fetch("api/settings").then((r) => (r.ok ? r.json() : null)).then((d) => d && setSettings(d.settings || {})).catch(() => {});
+    window.Scene3D && Scene3D.start(PROPS);
+  }, []);
+  useEffect(() => { // shop#<id> opens that product
+    if (!items) return;
+    const id = location.hash.slice(1);
+    const p = id && items.find((x) => x.id === id);
+    if (p) setOpen(p);
+  }, [items]);
+  const types = useMemo(() => {
+    const have = [...new Set((items || []).map((p) => p.type))];
+    return ["সব", ...TYPE_ORDER.filter((t) => have.includes(t)), ...have.filter((t) => !TYPE_ORDER.includes(t))];
+  }, [items]);
+  const shown = (items || []).filter((p) => tab === "সব" || p.type === tab);
+  const close = useCallback(() => setOpen(null), []);
+  return html`<${Nav} page="shop" />
+    <header className="hero shophero" id="top">
+      <div className="blob o"></div><div className="blob p"></div>
+      <div className="wrap">
+        <span className="chip"><b>নতুন</b>EloraEd শপ</span>
+        <h1>পড়ার সব জিনিস, <span className="grad">এক জায়গায়</span></h1>
+        <p className="lede">বই, ই-বুক, হাতে লেখা নোট, লাইভ ক্লাস আর পুরো কোর্স। ভিডিওতে যেভাবে বোঝাই, সেভাবেই সাজানো।</p>
+        ${settings.notice && html`<p className="notice">${settings.notice}</p>`}
+        ${types.length > 2 && html`<div className="tabs" role="tablist">${types.map((t) => html`<button key=${t} role="tab" aria-selected=${tab === t} className=${tab === t ? "on" : ""} onClick=${() => setTab(t)}>${t}${t !== "সব" ? html` <small>${bn(items.filter((p) => p.type === t).length)}</small>` : ""}</button>`)}</div>`}
+      </div>
+    </header>
+    <main>
+      <section className="block shoplist" id="list"><div className="wrap">
+        ${items === null
+          ? html`<div className="pgrid">${[0, 1, 2].map((i) => html`<div key=${i} className="skel"></div>`)}</div>`
+          : shown.length
+            ? html`<div className="pgrid">${shown.map((p, i) => html`<${Card} key=${p.id} p=${p} i=${i} onOpen=${setOpen} />`)}</div>`
+            : html`<div className="empty"><img src="img/logo.png" alt="" /><h2>${failed ? "শপ এই মুহূর্তে লোড হচ্ছে না" : "শীঘ্রই আসছে"}</h2><p className="lede">বই, নোট আর ক্লাসগুলো তৈরি হচ্ছে। নতুন কিছু এলেই Facebook পেজে জানাবো।</p><${Magnet} href=${FB} className="pill pill-orange"><${FbIcon} />Facebook-এ ফলো করো<//></div>`}
+      </div></section>
+      <section className="block" id="ask"><div className="wrap">
+        <${Reveal} className="askbox">
+          <div><p className="eyebrow">প্রশ্ন আছে?</p><h2>কোনটা নেবে বুঝতে পারছো না?</h2><p className="lede">Facebook-এ মেসেজ দাও, কোন অধ্যায়ে সমস্যা বলো। তোমার জন্য ঠিকটা বেছে দেবো।</p></div>
+          <${Magnet} href=${MESSENGER} className="pill pill-orange"><${FbIcon} />মেসেজ দাও<//>
+        <//>
+      </div></section>
+    </main>
+    <div className="wrap"><${Foot} /></div>
+    ${open && html`<${Product} p=${open} settings=${settings} onClose=${close} />`}`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);
+</script>
