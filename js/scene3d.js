@@ -347,7 +347,7 @@
       }
     }
 
-    let mx = 0, my = 0, tmx = 0, tmy = 0, lastY = scrollY, vel = 0;
+    let mx = 0, my = 0, tmx = 0, tmy = 0;
     addEventListener("pointermove", (e) => { tmx = e.clientX / innerWidth - .5; tmy = e.clientY / innerHeight - .5; }, { passive: true });
     let queued = false;
     const relayout = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; layout(); if (reduced) frame(0); }); };
@@ -358,8 +358,7 @@
     function frame(now) {
       const t = reduced ? 2 : (now - t0) / 1000;
       const sy = scrollY;
-      vel += (sy - lastY) * .0035; lastY = sy; vel *= .9;
-      mx += (tmx - mx) * .06; my += (tmy - my) * .06;
+      mx += (tmx - mx) * .04; my += (tmy - my) * .04;
       cam.position.set(mx * 30, -(sy + vh / 2) - my * 20, D);
       cam.lookAt(mx * 10, -(sy + vh / 2), 0);
       for (const o of objs) {
@@ -367,10 +366,10 @@
         // only props within reach of the screen are drawn and animated
         holder.visible = !!o.on && Math.abs(o.base.y + sy + vh / 2) < vh * 1.6;
         if (!holder.visible) continue;
-        o.roll += vel * spin;
         holder.position.set(o.base.x, o.base.y + Math.sin(t * .8 + seed) * 10, o.base.z);
-        holder.rotation.y = b.face ? Math.sin(t * .4 + seed) * .35 + Math.sin(o.roll) * .3 + mx * .5 : seed + t * .22 * spin + o.roll + mx * .5;
-        holder.rotation.x = Math.sin(t * .5 + seed) * .14 + my * .35;
+        // smooth, time-based turn only (scroll-driven spin made the props jerk)
+        holder.rotation.y = b.face ? Math.sin(t * .3 + seed) * .3 + mx * .25 : seed + t * .18 * spin + mx * .25;
+        holder.rotation.x = Math.sin(t * .4 + seed) * .1 + my * .15;
         holder.rotation.z = Math.sin(t * .37 + seed * 2) * .06;
         b.update && b.update(t);
       }

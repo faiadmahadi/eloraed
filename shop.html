@@ -14,15 +14,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/common.js"></script>
-<script src="js/scene3d.js"></script>
 <script>
-const PROPS = [ // one per section
-  { kind: "books", at: "#top", dy: .15, x: .86, z: -60, size: 140 },
-  { kind: "notes", at: "#list", dy: .5, x: -.92, z: -40, size: 110, mobile: false },
-  { kind: "cap", at: "#ask", dy: .1, x: .9, z: -80, size: 110 },
-];
 /* Types the owner is likely to use; any other type typed in the dashboard gets its own tab too */
 const TYPE_ORDER = ["বই", "ই-বুক", "নোট", "ক্লাস", "কোর্স", "মডেল টেস্ট"];
 const COVER = { "বই": ["#f2541e", "#8e2bd6"], "ই-বুক": ["#8e2bd6", "#4e1478"], "নোট": ["#ffb347", "#f2541e"], "ক্লাস": ["#c42a2a", "#2a0a2e"], "কোর্স": ["#ff7a1a", "#8e2bd6"] };
@@ -147,7 +140,6 @@ function App() {
   useEffect(() => {
     fetch("api/products").then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => setItems(d.products || [])).catch(() => { setItems([]); setFailed(true); });
     fetch("api/settings").then((r) => (r.ok ? r.json() : null)).then((d) => d && setSettings(d.settings || {})).catch(() => {});
-    window.Scene3D && Scene3D.start(PROPS);
   }, []);
   useEffect(() => { // shop#<id> opens that product
     if (!items) return;
@@ -162,11 +154,11 @@ function App() {
   const shown = (items || []).filter((p) => tab === "সব" || p.type === tab);
   const close = useCallback(() => setOpen(null), []);
   return html`<${Nav} page="shop" />
-    <header className="hero shophero" id="top">
+    <div className="lower"><header className="hero shophero" id="top">
       <div className="blob o"></div><div className="blob p"></div>
       <div className="wrap">
         <span className="chip"><b>নতুন</b>EloraEd শপ</span>
-        <h1>পড়ার সব জিনিস, <span className="grad">এক জায়গায়</span></h1>
+        <h1>পড়ার সব জিনিস, <span className="hl">এক জায়গায়</span></h1>
         <p className="lede">বই, ই-বুক, হাতে লেখা নোট, লাইভ ক্লাস আর পুরো কোর্স। ভিডিওতে যেভাবে বোঝাই, সেভাবেই সাজানো।</p>
         ${settings.notice && html`<p className="notice">${settings.notice}</p>`}
         ${types.length > 2 && html`<div className="tabs" role="tablist">${types.map((t) => html`<button key=${t} role="tab" aria-selected=${tab === t} className=${tab === t ? "on" : ""} onClick=${() => setTab(t)}>${t}${t !== "সব" ? html` <small>${bn(items.filter((p) => p.type === t).length)}</small>` : ""}</button>`)}</div>`}
@@ -187,7 +179,7 @@ function App() {
         <//>
       </div></section>
     </main>
-    <div className="wrap"><${Foot} /></div>
+    <div className="wrap"><${Foot} /></div></div>
     ${open && html`<${Product} p=${open} settings=${settings} onClose=${close} />`}`;
 }
 

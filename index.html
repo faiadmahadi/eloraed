@@ -60,6 +60,8 @@ const seriesNo = (text) => {
   const k = Number(m[2].replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)));
   return m[1] === "কৌতূহল" ? CURIOSITY[k] || null : k;
 };
+/* Videos already on the Facebook page; always shown, even when the Facebook API is down */
+const POSTED = [1, 2, 15];
 const LAST = "eloraed-videos";
 const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST)) || null; } catch (e) { return null; } };
 function useVideos() {
@@ -73,8 +75,9 @@ function useVideos() {
       else setLive((prev) => prev || []);
     }).catch(() => {});
   }, []);
-  if (!live) return VIDEOS;
-  return live.map((f) => {
+  const pinned = POSTED.map((n) => VIDEOS.find((v) => v.n === n)).filter(Boolean);
+  if (!live || !live.length) return pinned;
+  const fromFb = live.map((f) => {
     const n = seriesNo(f.description);
     const known = VIDEOS.find((v) => v.n === n);
     const lines = f.description.split("\n").map((s) => s.trim()).filter(Boolean);
@@ -82,6 +85,8 @@ function useVideos() {
       ? { ...known, key: f.id, fb: fbUrl(f.permalink_url) }
       : { n, key: f.id, q: (lines[0] || "নতুন ভিডিও").replace(/\s*\p{Extended_Pictographic}+\s*$/u, ""), topic: "নতুন", scene: lines[1] || "", img: f.thumb, fb: fbUrl(f.permalink_url) };
   });
+  const seen = new Set(fromFb.map((v) => v.n));
+  return [...fromFb, ...pinned.filter((v) => !seen.has(v.n))];
 }
 const imgOf = (v) => v.img || `img/${String(v.n).padStart(2, "0")}.jpg`;
 
@@ -166,7 +171,7 @@ function Videos({ videos, onOpen }) {
   const by = (d) => rail.current && rail.current.scrollBy({ left: d * rail.current.clientWidth * .8, behavior: reduced ? "auto" : "smooth" });
   return html`<section className="block" id="videos"><div className="wrap">
     <${Reveal} className="head">
-      <div><p className="eyebrow">Elora বিজ্ঞান সিরিজ</p><h2>এ পর্যন্ত <span className="grad">${bn(videos.length)}টা প্রশ্নের</span> উত্তর</h2></div>
+      <div><p className="eyebrow">Elora বিজ্ঞান সিরিজ</p><h2>এ পর্যন্ত <span className="hl">${bn(videos.length)}টা প্রশ্নের</span> উত্তর</h2></div>
       <div className="arrows"><button onClick=${() => by(-1)} aria-label="আগের ভিডিও"><${Arrow} left /></button><button onClick=${() => by(1)} aria-label="পরের ভিডিও"><${Arrow} /></button></div>
     <//>
     <${Reveal}>${videos.length
@@ -195,7 +200,7 @@ function How() {
     ["শেষে", "তোমার পালা", "একটা প্রশ্ন। উত্তর লেখো কমেন্টে, বন্ধুকে ট্যাগ করো।"],
   ];
   return html`<section className="block" id="how"><div className="wrap">
-    <${Reveal} className="head"><div><p className="eyebrow">প্রতিটা ভিডিও যেভাবে চলে</p><h2>এক মিনিটে <span className="grad">একটা পুরো</span> ধারণা</h2></div><//>
+    <${Reveal} className="head"><div><p className="eyebrow">প্রতিটা ভিডিও যেভাবে চলে</p><h2>এক মিনিটে <span className="hl">একটা পুরো</span> ধারণা</h2></div><//>
     <div className="steps" ref=${ref} style=${{ "--s": s }}>
       <div className="steps-line"><i></i></div>
       ${steps.map(([when, t, p], i) => html`<${Reveal} key=${i} className=${`step ${s > i / 4 + .05 ? "on" : ""}`} style=${{ transitionDelay: `${i * 80}ms` }}>
@@ -239,7 +244,7 @@ function Soon({ posted }) {
   const left = [...made, ...SOON].filter((s) => !posted.has(s.n));
   if (!left.length) return null;
   return html`<section className="block" id="soon"><div className="wrap">
-    <${Reveal} className="head"><div><p className="eyebrow">আসছে</p><h2>পরের <span className="grad">প্রশ্নগুলো</span></h2></div><//>
+    <${Reveal} className="head"><div><p className="eyebrow">আসছে</p><h2>পরের <span className="hl">প্রশ্নগুলো</span></h2></div><//>
     <div className="soon">${left.map((s, i) => html`<${Reveal} key=${s.n} className="scard" style=${{ transitionDelay: `${(i % 3) * 70}ms` }}>
       <span className="n">${bn(String(s.n).padStart(2, "0"))}</span><h3>${s.q}</h3><span className="tag">${s.tag}</span>
     <//>`)}</div>
@@ -247,25 +252,10 @@ function Soon({ posted }) {
 }
 
 function Final() {
-  const stars = useRef(null);
-  useEffect(() => {
-    const c = stars.current, ctx = c.getContext("2d");
-    const draw = () => {
-      const w = c.width = c.offsetWidth * devicePixelRatio, h = c.height = c.offsetHeight * devicePixelRatio;
-      for (let i = 0; i < 90; i++) {
-        const r = (k) => { const x = Math.sin((i + 1) * 12.9898 + k * 78.233) * 43758.5; return x - Math.floor(x); };
-        ctx.globalAlpha = .2 + r(3) * .6; ctx.fillStyle = r(4) > .7 ? "#c99bff" : "#fff4e4";
-        ctx.beginPath(); ctx.arc(r(1) * w, r(2) * h, (r(5) * 1.4 + .4) * devicePixelRatio, 0, 7); ctx.fill();
-      }
-    };
-    draw(); addEventListener("resize", draw);
-    return () => removeEventListener("resize", draw);
-  }, []);
   return html`<section className="final"><div className="wrap">
     <${Reveal} className="final-in">
-      <canvas className="stars" ref=${stars}></canvas>
       <div style=${{ position: "relative" }}>
-        <h2>নতুন ভিডিও <span className="grad" style=${{ backgroundImage: "linear-gradient(100deg,#ffb36b,#ff7a1a,#c99bff)" }}>মিস করো না</span></h2>
+        <h2>নতুন ভিডিও <span className="hl">মিস করো না</span></h2>
         <p>প্রতি সপ্তাহে নতুন প্রশ্ন, নতুন উত্তর। ফলো করো, আর যে বন্ধু বিজ্ঞানকে ভয় পায় তাকে ট্যাগ করো।</p>
         <div className="ctas"><${Magnet} href=${FB} className="pill pill-orange"><${FbIcon} />Facebook-এ ফলো করো<//></div>
       </div>
@@ -299,14 +289,9 @@ function Modal({ v, onClose }) {
 }
 
 /* 3D props along the page: x = share of half the screen width (− left), dy = screens below the anchor's top, z < 0 = farther (slower parallax) */
-const PROPS = [ // one per section (two in the hero)
+const PROPS = [ // only the two hero props
   { kind: "atom", at: "#top", dy: .12, x: -.9, z: -150, size: 120, mobile: false },
   { kind: "prism", at: "#top", dy: .5, x: -.03, z: 0, size: 105, mobile: false, keep: true },
-  { kind: "books", at: "#videos", dy: .45, x: -.9, z: -80, size: 130 },
-  { kind: "flask", at: "#how", dy: .35, x: .88, z: 60, size: 115 },
-  { kind: "planet", at: "#quiz", dy: .4, x: -.92, z: -250, size: 150 },
-  { kind: "laptop", at: "#shop", dy: .05, x: .9, z: -120, size: 125 },
-  { kind: "cap", at: "#soon", dy: .2, x: -.9, z: -60, size: 110 },
 ];
 
 /* Home teaser for the shop: shows featured products when there are any */
@@ -317,7 +302,7 @@ function ShopTeaser() {
   }, []);
   return html`<section className="block" id="shop"><div className="wrap">
     <${Reveal} className="head">
-      <div><p className="eyebrow">EloraEd শপ</p><h2>বই, নোট, ক্লাস, <span className="grad">সব এক জায়গায়</span></h2></div>
+      <div><p className="eyebrow">EloraEd শপ</p><h2>বই, নোট, ক্লাস, <span className="hl">সব এক জায়গায়</span></h2></div>
       <${Magnet} href="shop" newTab=${false} className="pill pill-orange"><${BagIcon} />শপে যাও<//>
     <//>
     ${items.length > 0 && html`<div className="teaser">${items.map((p) => html`<${Reveal} key=${p.id} as="a" className="tcard" href=${"shop#" + p.id}>
@@ -341,8 +326,8 @@ function App() {
   useEffect(() => { window.Scene3D && Scene3D.start(PROPS); }, []);
   return html`<div className="progress" ref=${bar}></div>
     <${Nav} /><${Hero} count=${videos.length} /><${Band} />
-    <main><${Videos} videos=${videos} onOpen=${setOpen} /><${How} /><${Quiz} /><${ShopTeaser} /><${Soon} posted=${posted} /></main>
-    <${Final} />
+    <div className="lower"><main><${Videos} videos=${videos} onOpen=${setOpen} /><${How} /><${Quiz} /><${ShopTeaser} /><${Soon} posted=${posted} /></main>
+    <${Final} /></div>
     ${open && html`<${Modal} v=${open} onClose=${close} />`}`;
 }
 

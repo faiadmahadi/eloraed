@@ -253,3 +253,29 @@ h2 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 4.4vw
 .tcard h3 { font-family: var(--display); font-size: 19px; line-height: 1.25; margin: 6px 0 2px; }
 .tcard b { color: var(--orange-2); font-family: var(--display); font-size: 18px; }
 @media (max-width: 900px) { .teaser { grid-template-columns: 1fr; } }
+
+/* Below the hero: a quieter, higher-contrast palette. Near-black (or warm white in light mode),
+   off-white text, quiet cards with thin borders, and orange as the only accent. */
+.lower { --bg: #faf7f3; --bg-2: #f0ebe5; --card: #ffffff; --line: #e4ddd5; --ink: #120e12; --muted: #5f585e; --glass: rgba(255,255,255,.85);
+  --purple: var(--orange-2); --lilac: var(--orange); position: relative; background: var(--bg); color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lower {
+  --bg: #0c0a0d; --bg-2: #18151b; --card: #141117; --line: #2a252d; --ink: #f5efe8; --muted: #a9a1a7; --glass: rgba(20,17,23,.85); --purple: var(--orange); } }
+:root[data-theme="dark"] .lower { --bg: #0c0a0d; --bg-2: #18151b; --card: #141117; --line: #2a252d; --ink: #f5efe8; --muted: #a9a1a7; --glass: rgba(20,17,23,.85); --purple: var(--orange); }
+.hl { color: var(--orange); }
+.lower .eyebrow { color: var(--orange); }
+.lower .blob, .lower .hero::before { display: none; }
+.lower .peel::after { display: none; }
+.lower .peel { border-radius: 18px; }
+.lower .step .dot { border-width: 2px; }
+.lower .qside { background: var(--orange-2); }
+.lower .scard { border-style: solid; background: var(--card); }
+.lower .scard:hover { border-color: var(--orange); }
+.lower .scard .n { font-size: 30px; color: var(--orange); -webkit-text-stroke: 0; }
+.lower .final-in { background: var(--card); border: 1px solid var(--line); color: var(--ink); }
+.lower .final-in h2 { color: var(--ink); }
+.lower .final-in p { color: var(--muted); }
+.lower .topic.alt { background: var(--ink); color: var(--bg); }
+.lower .phone { border-color: var(--card); }
+/* the tilted band hides the seam where the hero background meets the darker lower page */
+.band { position: relative; z-index: 2; }
+.lower { margin-top: -70px; padding-top: 70px; background: linear-gradient(transparent, var(--bg) 140px); }
